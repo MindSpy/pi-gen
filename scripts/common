@@ -17,10 +17,14 @@ bootstrap(){
 	BOOTSTRAP_ARGS+=(--components "main,contrib,non-free")
 	BOOTSTRAP_ARGS+=(--keyring "${STAGE_DIR}/files/raspberrypi.gpg")
 	BOOTSTRAP_ARGS+=(--exclude=info)
+	BOOTSTRAP_ARGS+=(--foreign)
 	BOOTSTRAP_ARGS+=("$@")
 	printf -v BOOTSTRAP_STR '%q ' "${BOOTSTRAP_ARGS[@]}"
 
+	log "bootstrap: first stage"
 	setarch linux32 capsh --drop=cap_setfcap -- -c "'${BOOTSTRAP_CMD}' $BOOTSTRAP_STR" || true
+	log "bootstrap: second stage"
+	on_chroot /debootstrap/debootstrap --second-stage
 
 	if [ -d "$2/debootstrap" ] && ! rmdir "$2/debootstrap"; then
 		cp "$2/debootstrap/debootstrap.log" "${STAGE_WORK_DIR}"
@@ -78,7 +82,7 @@ export -f unmount_image
 
 on_chroot() {
 	if ! mount | grep -q "$(realpath "${ROOTFS_DIR}"/proc)"; then
-		mount -t proc proc "${ROOTFS_DIR}/proc"
+		mount -t proc /proc "${ROOTFS_DIR}/proc"
 	fi
 
 	if ! mount | grep -q "$(realpath "${ROOTFS_DIR}"/dev)"; then
