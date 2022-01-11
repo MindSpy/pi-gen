@@ -9,11 +9,15 @@ bootstrap(){
 
 	export http_proxy=${APT_PROXY}
 
-	if [ "$(dpkg --print-architecture)" !=  "armhf" ] && [ "$(dpkg --print-architecture)" !=  "aarch64" ]; then
+	ARCH="$(dpkg --print-architecture)"
+	SETARCH=""
+	if [ "$ARCH" !=  "armhf" ] && [ "$ARCH" !=  "amd64" ]; then
+		SETARCH="setarch linux32"
 		BOOTSTRAP_CMD=qemu-debootstrap
+		ARCH="armhf"
 	fi
 
-	BOOTSTRAP_ARGS+=(--arch armhf)
+	BOOTSTRAP_ARGS+=(--arch $ARCH)
 	BOOTSTRAP_ARGS+=(--components "main,contrib,non-free")
 	BOOTSTRAP_ARGS+=(--keyring "${STAGE_DIR}/files/raspberrypi.gpg")
 	BOOTSTRAP_ARGS+=(--exclude=info)
@@ -22,9 +26,9 @@ bootstrap(){
 	printf -v BOOTSTRAP_STR '%q ' "${BOOTSTRAP_ARGS[@]}"
 
 	log "bootstrap: first stage"
-	setarch linux32 capsh --drop=cap_setfcap -- -c "'${BOOTSTRAP_CMD}' $BOOTSTRAP_STR" || true
+	$SETARCH capsh --drop=cap_setfcap -- -c "'${BOOTSTRAP_CMD}' $BOOTSTRAP_STR" || true
 	log "bootstrap: second stage"
-	on_chroot /debootstrap/debootstrap --second-stage
+	on_chroot -c "/debootstrap/debootstrap --second-stage"
 
 	if [ -d "$2/debootstrap" ] && ! rmdir "$2/debootstrap"; then
 		cp "$2/debootstrap/debootstrap.log" "${STAGE_WORK_DIR}"
@@ -97,7 +101,13 @@ on_chroot() {
 		mount --bind /sys "${ROOTFS_DIR}/sys"
 	fi
 
-	setarch linux32 capsh --drop=cap_setfcap "--chroot=${ROOTFS_DIR}/" -- -e "$@"
+	ARCH="$(dpkg --print-architecture)"
+	SETARCH=""
+	if [ "$ARCH" !=  "armhf" ] && [ "$ARCH" !=  "arm64" ]; then
+		SETARCH="setarch linux32"
+	fi
+
+	$SETARCH capsh --drop=cap_setfcap "--chroot=${ROOTFS_DIR}/" -- -e "$@"
 }
 export -f on_chroot
 
