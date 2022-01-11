@@ -12,7 +12,12 @@ else
 	rm -f "${ROOTFS_DIR}/etc/apt/apt.conf.d/51cache"
 fi
 
-on_chroot apt-key add - < files/raspberrypi.gpg.key
+GPG_CMD="gpg --batch --yes --dearmor"
+KEY_DIR="/usr/share/keyrings"
+
+on_chroot -c "$GPG_CMD -o $KEY_DIR/raspbian.gpg" < files/raspbian.gpg.key
+on_chroot -c "$GPG_CMD -o $KEY_DIR/raspberrypi.gpg" < files/raspberrypi.gpg.key
+
 on_chroot << EOF
 apt-get update
 apt-get dist-upgrade -y
