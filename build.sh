@@ -202,6 +202,7 @@ export WORK_DIR="${WORK_DIR:-"${BASE_DIR}/work/${IMG_NAME}"}"
 export DEPLOY_DIR=${DEPLOY_DIR:-"${BASE_DIR}/deploy"}
 export DEPLOY_ZIP="${DEPLOY_ZIP:-1}"
 export LOG_FILE="${WORK_DIR}/build.log"
+export STAGE_PREFIX=${STAGE_PREFIX:-all}
 
 export TARGET_HOSTNAME=${TARGET_HOSTNAME:-raspberrypi}
 
@@ -292,13 +293,43 @@ log "Begin ${BASE_DIR}"
 
 STAGE_LIST=${STAGE_LIST:-${BASE_DIR}/stage*}
 
+RUN_STAGES=1
+RUN_EXPORTS=1
+
+case "$STAGE_PREFIX" in
+	export) RUN_STAGES=0 ;;
+	stage) RUN_EXPORTS=0 ;;
+	all) ;;
+	*)
+		echo "Unexpected STAGE_PREFIX value. Allowed: all, export, stage."
+		exit 1
+	;;
+esac
+
 for STAGE_DIR in $STAGE_LIST; do
 	STAGE_DIR=$(realpath "${STAGE_DIR}")
-	run_stage
+
+	if [ "$RUN_STAGES" = "1" ]; then
+		run_stage
+	else
+		log "Skiping stage: $STAGE_DIR"
+
+		if [ ! -f "${STAGE_DIR}/SKIP_IMAGES" ]; then
+			if [ -f "${STAGE_DIR}/EXPORT_IMAGE" ]; then
+				EXPORT_DIRS="${EXPORT_DIRS} ${STAGE_DIR}"
+			fi
+		fi
+	fi
 done
+
+if [ "$RUN_IMAGES" = "1" ]; then
+	log "Skipping exports.."
+	EXPORT_DIRS=""
+fi
 
 CLEAN=1
 for EXPORT_DIR in ${EXPORT_DIRS}; do
+	log "Exporting $EXPORT_DIR"
 	STAGE_DIR=${BASE_DIR}/export-image
 	# shellcheck source=/dev/null
 	source "${EXPORT_DIR}/EXPORT_IMAGE"
