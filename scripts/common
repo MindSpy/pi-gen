@@ -11,7 +11,7 @@ bootstrap(){
 
 	ARCH="$(dpkg --print-architecture)"
 	SETARCH=""
-	if [ "$ARCH" !=  "armhf" ] && [ "$ARCH" !=  "amd64" ]; then
+	if [ "$ARCH" !=  "armhf" ] && [ "$ARCH" !=  "arm64" ]; then
 		SETARCH="setarch linux32"
 		BOOTSTRAP_CMD=qemu-debootstrap
 		ARCH="armhf"
