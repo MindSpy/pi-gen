@@ -27,7 +27,7 @@ bootstrap(){
 	printf -v BOOTSTRAP_STR '%q ' "${BOOTSTRAP_ARGS[@]}"
 
 	log "bootstrap: first stage"
-	$SETARCH -c "'${BOOTSTRAP_CMD}' $BOOTSTRAP_STR" || true
+	$SETARCH sh -c "'${BOOTSTRAP_CMD}' $BOOTSTRAP_STR" || true
 	log "bootstrap: second stage"
 	$SETARCH capsh --drop=cap_setfcap -- -c "/debootstrap/debootstrap --second-stage"
 
