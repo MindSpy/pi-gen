@@ -340,7 +340,7 @@ for STAGE_DIR in $STAGE_LIST; do
 	fi
 done
 
-if [ "$RUN_IMAGES" = "1" ]; then
+if [ "$RUN_EXPORTS" = "1" ]; then
 	log "Skipping exports.."
 	EXPORT_DIRS=""
 fi
