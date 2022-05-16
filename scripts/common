@@ -29,7 +29,7 @@ bootstrap(){
 	log "bootstrap: first stage"
 	$SETARCH sh -c "'${BOOTSTRAP_CMD}' $BOOTSTRAP_STR" || true
 	log "bootstrap: second stage"
-	$SETARCH capsh --drop=cap_setfcap -- -c "/debootstrap/debootstrap --second-stage"
+	$SETARCH capsh --drop=cap_setfcap "--chroot=${ROOTFS_DIR}/" -- -c "/debootstrap/debootstrap --second-stage"
 
 	if [ -d "$2/debootstrap" ] && ! rmdir "$2/debootstrap"; then
 		cp "$2/debootstrap/debootstrap.log" "${STAGE_WORK_DIR}"
