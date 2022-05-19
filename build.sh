@@ -327,7 +327,7 @@ esac
 for STAGE_DIR in $STAGE_LIST; do
 	STAGE_DIR=$(realpath "${STAGE_DIR}")
 
-	if [ "$RUN_STAGES" = "1" ]; then
+	if [ $RUN_STAGES -eq 1 ]; then
 		run_stage
 	else
 		log "Skiping stage: $STAGE_DIR"
@@ -340,7 +340,7 @@ for STAGE_DIR in $STAGE_LIST; do
 	fi
 done
 
-if [ "$RUN_EXPORTS" = "1" ]; then
+if [ $RUN_EXPORTS -eq 0 ]; then
 	log "Skipping exports.."
 	EXPORT_DIRS=""
 fi
