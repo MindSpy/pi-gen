@@ -6,6 +6,7 @@ export -f log
 bootstrap(){
 	local BOOTSTRAP_CMD=debootstrap
 	local BOOTSTRAP_ARGS=()
+	local ROOTFS_DIR=$2
 
 	export http_proxy=${APT_PROXY}
 
@@ -22,19 +23,47 @@ bootstrap(){
 	BOOTSTRAP_ARGS+=(--keyring "${STAGE_DIR}/files/raspberrypi.gpg")
 	BOOTSTRAP_ARGS+=(--exclude=info)
 	BOOTSTRAP_ARGS+=(--include=ca-certificates)
-	BOOTSTRAP_ARGS+=(--foreign)
 	BOOTSTRAP_ARGS+=("$@")
 	printf -v BOOTSTRAP_STR '%q ' "${BOOTSTRAP_ARGS[@]}"
 
-	log "bootstrap: first stage"
-	$SETARCH sh -c "'${BOOTSTRAP_CMD}' $BOOTSTRAP_STR" || true
-	log "bootstrap: second stage"
-	$SETARCH capsh --drop=cap_setfcap "--chroot=${ROOTFS_DIR}/" -- -c "/debootstrap/debootstrap --second-stage"
+	mkdir -p $ROOTFS_DIR
+	STATE=$(cat $ROOTFS_DIR/bootstrap-state 2> /dev/null || echo 1)
+	if [ $STATE -lt 2 ]; then 
+		echo 1 > $ROOTFS_DIR/bootstrap-state
 
-	if [ -d "$2/debootstrap" ] && ! rmdir "$2/debootstrap"; then
-		cp "$2/debootstrap/debootstrap.log" "${STAGE_WORK_DIR}"
-		log "bootstrap failed: please check ${STAGE_WORK_DIR}/debootstrap.log"
-		return 1
+		local PKG_GET_TRIES=5
+		local PKG_GET_CODE=0
+		local PKG_GET_CMD="$BOOTSTRAP_CMD --download-only $BOOTSTRAP_STR 1>&2; echo \$?"
+	
+		for i in $(seq $PKG_GET_TRIES); do 
+			log "bootstrap: first stage - download (attempt $i)"
+			# wrap the command and capture exit code
+			PKG_GET_CODE=$( $SETARCH sh -c "$PKG_GET_CMD" )
+			# if OK jump out
+			if [ $PKG_GET_CODE -eq 0 ]; then break; fi
+		done
+
+		if [ $PKG_GET_CODE -gt 0 ]; then
+			log "bootstrap: error: failed to download ($PKG_GET_TRIES attempts)"
+			return 1
+		fi
+		echo 2 > $ROOTFS_DIR/bootstrap-state
+	fi
+	if [ $STATE -lt 3 ]; then 
+
+	    log "bootstrap: first stage"
+		$SETARCH sh -c "'${BOOTSTRAP_CMD}' --foreign $BOOTSTRAP_STR"
+		echo 3 > $ROOTFS_DIR/bootstrap-state
+	fi
+	if [ $STATE -lt 4 ]; then 
+		log "bootstrap: second stage"
+		$SETARCH capsh --drop=cap_setfcap "--chroot=${ROOTFS_DIR}/" -- -c "/debootstrap/debootstrap --second-stage"
+		if [ -d "$2/debootstrap" ] && ! rmdir "$2/debootstrap"; then
+			cp "$2/debootstrap/debootstrap.log" "${STAGE_WORK_DIR}"
+			log "bootstrap failed: please check ${STAGE_WORK_DIR}/debootstrap.log"
+			return 1
+		fi
+		echo 4 > $ROOTFS_DIR/bootstrap-state
 	fi
 }
 export -f bootstrap
